@@ -12,9 +12,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        ref: add-imerg-pipeline # checkout monitoring branch
-
 
     - name: Set up Python
       uses: actions/setup-python@v5
