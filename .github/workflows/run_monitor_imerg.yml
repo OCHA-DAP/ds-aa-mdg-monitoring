@@ -39,4 +39,4 @@ jobs:
         DS_AWS_EMAIL_PASSWORD: ${{ secrets.DS_AWS_EMAIL_PASSWORD }}
         DS_AWS_EMAIL_ADDRESS: ${{ secrets.DS_AWS_EMAIL_ADDRESS }}
       run: |
-        python pipelines/run_monitor_imerg.py
+        python pipelines/monitor_imerg.py
