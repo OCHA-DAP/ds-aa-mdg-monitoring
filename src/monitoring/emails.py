@@ -130,7 +130,13 @@ def send_info_email(df: pd.DataFrame, fig):
         chd_banner_cid=chd_banner_cid[1:-1],
         ocha_logo_cid=ocha_logo_cid[1:-1],
     )
-    text_str = html2text(html_str)
+    body_text_str = html2text(html_str)
+    # include preview text at the beginning for certain email clients
+    preview_text_str = f"""
+    Action anticipatoire Madagascar - précipitations autour de {middle_date}\n\n
+    Déclencheur observationnel : {obsv_trigger}\n
+    """  # noqa
+    text_str = preview_text_str + body_text_str
     msg.set_content(text_str)
     msg.add_alternative(html_str, subtype="html")
 

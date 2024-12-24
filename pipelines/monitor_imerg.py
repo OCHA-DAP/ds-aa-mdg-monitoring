@@ -13,9 +13,11 @@ def parse_args():
         description="Run IMERG monitoring for a specific date."
     )
     parser.add_argument(
-        "--today",
+        "--date",
         type=str,
-        default=pd.Timestamp.today().strftime("%Y-%m-%d"),
+        default=(pd.Timestamp.today() - pd.DateOffset(days=2)).strftime(
+            "%Y-%m-%d"
+        ),
         help="Date to run for, in YYYY-MM-DD format (default is today). "
         "Script uses rainfall data for the three days before this date.",
     )
@@ -24,10 +26,10 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    run_date = pd.to_datetime(args.today)
-    dates = pd.date_range(end=run_date - pd.DateOffset(days=1), periods=3)
+    run_date = pd.to_datetime(args.date)
+    dates = pd.date_range(end=run_date + pd.DateOffset(days=1), periods=3)
     print(
-        f"Monitoring IMERG for three days before {run_date.date()}: "
+        f"Monitoring IMERG for three days centered on {run_date.date()}: "
         f"{[str(x.date()) for x in dates]}"
     )
 
