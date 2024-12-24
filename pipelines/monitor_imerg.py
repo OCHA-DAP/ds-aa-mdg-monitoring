@@ -1,11 +1,11 @@
 import argparse
 
 import pandas as pd
-from matplotlib import pyplot as plt
 
 from src.datasources.imerg import fetch_imerg_data
 from src.datasources.polygon import fetch_polygon_data
-from src.email.plotting import plot_rainfall
+from src.monitoring.emails import send_info_email
+from src.monitoring.plotting import plot_rainfall
 
 
 def parse_args():
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     run_date = pd.to_datetime(args.today)
     dates = pd.date_range(end=run_date - pd.DateOffset(days=1), periods=3)
     print(
-        f"Running IMERG for three days before {run_date.date()}: "
+        f"Monitoring IMERG for three days before {run_date.date()}: "
         f"{[str(x.date()) for x in dates]}"
     )
 
@@ -50,11 +50,12 @@ if __name__ == "__main__":
             f"{missing_dates}"
         )
 
-    # Merge and sort the data
     imerg_df = imerg_df.merge(adm_df[["pcode", "name"]]).sort_values(
         ["valid_date", "name"]
     )
 
-    # Plot the rainfall data
+    print("Plotting...")
     fig, ax = plot_rainfall(imerg_df)
-    plt.show()
+
+    print("Sending email...")
+    send_info_email(imerg_df, fig)
