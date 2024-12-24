@@ -12,7 +12,12 @@ DS_AZ_DB_PROD_PW = os.getenv("DS_AZ_DB_PROD_PW")
 DS_AZ_DB_PROD_UID = os.getenv("DS_AZ_DB_PROD_UID")
 DS_AZ_DB_DEV_UID = os.getenv("DS_AZ_DB_DEV_UID")
 
-AZURE_DB_BASE_URL = "postgresql+psycopg2://{uid}:{pw}@{db_name}.postgres.database.azure.com/postgres"  # noqa: E501
+DS_AZ_DB_PROD_HOST = os.getenv("DS_AZ_DB_PROD_HOST")
+DS_AZ_DB_DEV_HOST = os.getenv("DS_AZ_DB_DEV_HOST")
+
+AZURE_DB_BASE_URL = (
+    "postgresql+psycopg2://{uid}:{pw}@{db_host}/postgres"  # noqa: E501
+)
 
 
 def get_engine(stage: Literal["dev", "prod"] = "dev"):
@@ -38,13 +43,13 @@ def get_engine(stage: Literal["dev", "prod"] = "dev"):
         url = AZURE_DB_BASE_URL.format(
             uid=DS_AZ_DB_DEV_UID,
             pw=DS_AZ_DB_DEV_PW,
-            db_name="chd-rasterstats-dev",
+            db_host=DS_AZ_DB_DEV_HOST,
         )
     elif stage == "prod":
         url = AZURE_DB_BASE_URL.format(
             uid=DS_AZ_DB_PROD_UID,
             pw=DS_AZ_DB_PROD_PW,
-            db_name="chd-rasterstats-prod",
+            db_host=DS_AZ_DB_PROD_HOST,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")
