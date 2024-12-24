@@ -45,7 +45,7 @@ jobs:
         DS_AWS_EMAIL_ADDRESS: ${{ secrets.DS_AWS_EMAIL_ADDRESS }}
       run: |
         if [ -z "${{ github.event.inputs.date }}" ]; then
-          python monitor_imerg.py  # No --date argument passed if blank
+          python pipelines/monitor_imerg.py  # No --date argument passed if blank
         else
-          python monitor_imerg.py --date ${{ github.event.inputs.date }}
+          python pipelines/monitor_imerg.py --date ${{ github.event.inputs.date }}
         fi
