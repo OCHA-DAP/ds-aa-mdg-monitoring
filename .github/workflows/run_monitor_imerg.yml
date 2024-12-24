@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 19 * * *' # run at 7pm UTC, after raster stats run at 6pm UTC
   workflow_dispatch:
+    inputs:
+      date:
+        description: 'The center date to run for (in YYYY-MM-DD format)'
+        required: false
+        default: ''  # Leave blank by default
 
 jobs:
   run-script:
@@ -30,10 +35,15 @@ jobs:
         DS_AZ_BLOB_DEV_SAS_WRITE: ${{ secrets.DS_AZ_BLOB_DEV_SAS_WRITE }}
         DS_AZ_DB_PROD_HOST: ${{ secrets.DS_AZ_DB_PROD_HOST }}
         DS_AZ_DB_PROD_UID: ${{ secrets.DS_AZ_DB_PROD_UID }}
-        DS_AZ_DB_PROD_PWD: ${{ secrets.DS_AZ_DB_PROD_PWD }}
+        DS_AZ_DB_PROD_PW: ${{ secrets.DS_AZ_DB_PROD_PW }}
         DS_AWS_EMAIL_HOST: ${{ secrets.DS_AWS_EMAIL_HOST }}
         DS_AWS_EMAIL_USERNAME: ${{ secrets.DS_AWS_EMAIL_USERNAME }}
         DS_AWS_EMAIL_PASSWORD: ${{ secrets.DS_AWS_EMAIL_PASSWORD }}
         DS_AWS_EMAIL_ADDRESS: ${{ secrets.DS_AWS_EMAIL_ADDRESS }}
+        TEST_LIST: ${{ vars.TEST_LIST }}
       run: |
-        python pipelines/monitor_imerg.py
+        if [ -z "${{ github.event.inputs.date }}" ]; then
+          python pipelines/monitor_imerg.py  # No --date argument passed if blank
+        else
+          python pipelines/monitor_imerg.py --date ${{ github.event.inputs.date }}
+        fi
