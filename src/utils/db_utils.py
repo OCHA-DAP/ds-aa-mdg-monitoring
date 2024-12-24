@@ -15,9 +15,13 @@ DS_AZ_DB_DEV_UID = os.getenv("DS_AZ_DB_DEV_UID")
 DS_AZ_DB_PROD_HOST = os.getenv("DS_AZ_DB_PROD_HOST")
 DS_AZ_DB_DEV_HOST = os.getenv("DS_AZ_DB_DEV_HOST")
 
-AZURE_DB_BASE_URL = (
-    "postgresql+psycopg2://{uid}:{pw}@{db_host}/postgres"  # noqa: E501
-)
+# print PROD variables length to check if it is correct
+print(f"DS_AZ_DB_PROD_PW length: {len(DS_AZ_DB_PROD_PW)}")
+print(f"DS_AZ_DB_PROD_UID length: {len(DS_AZ_DB_PROD_UID)}")
+print(f"DS_AZ_DB_PROD_HOST length: {len(DS_AZ_DB_PROD_HOST)}")
+
+
+AZURE_DB_BASE_URL = "postgresql+psycopg2://{uid}:{pw}@{db_host}/postgres"
 
 
 def get_engine(stage: Literal["dev", "prod"] = "dev"):
@@ -51,6 +55,8 @@ def get_engine(stage: Literal["dev", "prod"] = "dev"):
             pw=DS_AZ_DB_PROD_PW,
             db_host=DS_AZ_DB_PROD_HOST,
         )
+        # print url length to check if it is correct
+        print(f"URL length: {len(url)}")
     else:
         raise ValueError(f"Invalid stage: {stage}")
     return create_engine(url)
