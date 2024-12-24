@@ -43,6 +43,7 @@ jobs:
         DS_AWS_EMAIL_USERNAME: ${{ secrets.DS_AWS_EMAIL_USERNAME }}
         DS_AWS_EMAIL_PASSWORD: ${{ secrets.DS_AWS_EMAIL_PASSWORD }}
         DS_AWS_EMAIL_ADDRESS: ${{ secrets.DS_AWS_EMAIL_ADDRESS }}
+        TEST_LIST: ${{ vars.TEST_LIST }}
       run: |
         if [ -z "${{ github.event.inputs.date }}" ]; then
           python pipelines/monitor_imerg.py  # No --date argument passed if blank
