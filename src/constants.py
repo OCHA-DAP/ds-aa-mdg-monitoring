@@ -1,1 +1,3 @@
 ISO3 = "MDG"
+
+RAIN_THRESH = 300
