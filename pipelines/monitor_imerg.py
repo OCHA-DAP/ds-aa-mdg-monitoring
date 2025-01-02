@@ -18,8 +18,9 @@ def parse_args():
         default=(pd.Timestamp.today() - pd.DateOffset(days=2)).strftime(
             "%Y-%m-%d"
         ),
-        help="Date to run for, in YYYY-MM-DD format (default is today). "
-        "Script uses rainfall data for the three days before this date.",
+        help="Center date to run for, in YYYY-MM-DD format "
+        "(default is two days before today)."
+        "Script uses rainfall data for the three days centered on this date.",
     )
     return parser.parse_args()
 
