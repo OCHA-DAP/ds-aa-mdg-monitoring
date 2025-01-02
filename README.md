@@ -1,4 +1,4 @@
-# Monitoring for Madagascar cyclones anticipatory action framework: Rainfall using IMERG.
+# Monitoring for Madagascar cyclones anticipatory action framework: Rainfall using IMERG v7.
 Adding pipeline to plot IMERG for most recent three consecutive days, and send email.
 
 ## Mailing lists
