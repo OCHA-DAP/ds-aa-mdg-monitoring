@@ -19,7 +19,7 @@ Run locally with python pipelines/monitor_imerg.py.
 
 Takes optional argument command line argument date, which is the center date of the three consecutive days. This defaults to two days before today, for which we should have all raster stats. This is also included as an argument in the GH Action workflow_dispatch.
 
-To run on GH actions, use the main branch (note that the main branch yml checks out this branch).
+To run on GH actions, use the main branch.
 
 ## Trigger
 The threshold is >= 300 mm in any region (averaged over region, summed over three days). This is set as RAIN_THRESH in src/constants.py. 
