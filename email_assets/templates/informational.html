@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="font-size:10px;padding: 6px 10px 6px 10px;background-color:#CCCCCC;color:#FFFFFF">
+  <p style="margin:0;">
+    Cet e-mail est purement consultatif et ne sert pas d'avis officiel pour le cadre d'action anticipatoire.
+  </p>
+</div>
+<div>
+  <p>Chers collègues,</p>
+  <p>
+    De nouvelles données observationnelles satellitaires des précipitations (IMERG) viennent d'être émises par NASA.
+  </p>
+  <p>
+    Un graphique des observations est présenté ci-dessous.
+  </p>
+  <img src="cid:{{ plot_cid }}" width="100%"/>
+  <p>
+    Le code utilisé pour produire cette alerte est disponible sur GitHub <a href="https://github.com/OCHA-DAP/ds-aa-mdg-monitoring">ici</a>.
+  </p>
+  <p>Meilleures salutations,</p>
+  <p>Centre de données humanitaires OCHA</p>
+</div>
+{% endblock content %}
