@@ -6,14 +6,14 @@ from sqlalchemy import create_engine, insert
 
 load_dotenv()
 
-DS_AZ_DB_DEV_PW = os.getenv("DS_AZ_DB_DEV_PW")
-DS_AZ_DB_PROD_PW = os.getenv("DS_AZ_DB_PROD_PW")
+DSCI_AZ_DB_DEV_PW = os.getenv("DSCI_AZ_DB_DEV_PW")
+DSCI_AZ_DB_PROD_PW = os.getenv("DSCI_AZ_DB_PROD_PW")
 
-DS_AZ_DB_PROD_UID = os.getenv("DS_AZ_DB_PROD_UID")
-DS_AZ_DB_DEV_UID = os.getenv("DS_AZ_DB_DEV_UID")
+DSCI_AZ_DB_PROD_UID = os.getenv("DSCI_AZ_DB_PROD_UID")
+DSCI_AZ_DB_DEV_UID = os.getenv("DSCI_AZ_DB_DEV_UID")
 
-DS_AZ_DB_PROD_HOST = os.getenv("DS_AZ_DB_PROD_HOST")
-DS_AZ_DB_DEV_HOST = os.getenv("DS_AZ_DB_DEV_HOST")
+DSCI_AZ_DB_PROD_HOST = os.getenv("DSCI_AZ_DB_PROD_HOST")
+DSCI_AZ_DB_DEV_HOST = os.getenv("DSCI_AZ_DB_DEV_HOST")
 
 AZURE_DB_BASE_URL = "postgresql+psycopg2://{uid}:{pw}@{db_host}/postgres"
 
@@ -39,15 +39,15 @@ def get_engine(stage: Literal["dev", "prod"] = "dev"):
     """
     if stage == "dev":
         url = AZURE_DB_BASE_URL.format(
-            uid=DS_AZ_DB_DEV_UID,
-            pw=DS_AZ_DB_DEV_PW,
-            db_host=DS_AZ_DB_DEV_HOST,
+            uid=DSCI_AZ_DB_DEV_UID,
+            pw=DSCI_AZ_DB_DEV_PW,
+            db_host=DSCI_AZ_DB_DEV_HOST,
         )
     elif stage == "prod":
         url = AZURE_DB_BASE_URL.format(
-            uid=DS_AZ_DB_PROD_UID,
-            pw=DS_AZ_DB_PROD_PW,
-            db_host=DS_AZ_DB_PROD_HOST,
+            uid=DSCI_AZ_DB_PROD_UID,
+            pw=DSCI_AZ_DB_PROD_PW,
+            db_host=DSCI_AZ_DB_PROD_HOST,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")

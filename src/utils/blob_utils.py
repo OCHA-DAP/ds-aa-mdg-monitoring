@@ -6,8 +6,8 @@ import pandas as pd
 from azure.storage.blob import ContainerClient
 
 PROJECT_PREFIX = "ds-aa-mdg-monitoring"
-DEV_BLOB_SAS = os.getenv("DS_AZ_BLOB_DEV_SAS_WRITE")
-PROD_BLOB_SAS = os.getenv("DS_AZ_BLOB_PROD_SAS")
+DEV_BLOB_SAS = os.getenv("DSCI_AZ_BLOB_DEV_SAS_WRITE")
+PROD_BLOB_SAS = os.getenv("DSCI_AZ_BLOB_PROD_SAS")
 
 
 def get_container_client(
