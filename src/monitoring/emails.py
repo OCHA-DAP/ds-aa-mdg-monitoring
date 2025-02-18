@@ -19,11 +19,11 @@ from src.utils import blob_utils
 
 load_dotenv()
 
-EMAIL_HOST = os.getenv("DS_AWS_EMAIL_HOST")
-EMAIL_PORT = int(os.getenv("DS_AWS_EMAIL_PORT", 465))
-EMAIL_PASSWORD = os.getenv("DS_AWS_EMAIL_PASSWORD")
-EMAIL_USERNAME = os.getenv("DS_AWS_EMAIL_USERNAME")
-EMAIL_ADDRESS = os.getenv("DS_AWS_EMAIL_ADDRESS")
+EMAIL_HOST = os.getenv("DSCI_AWS_EMAIL_HOST")
+EMAIL_PORT = int(os.getenv("DSCI_AWS_EMAIL_PORT", 465))
+EMAIL_PASSWORD = os.getenv("DSCI_AWS_EMAIL_PASSWORD")
+EMAIL_USERNAME = os.getenv("DSCI_AWS_EMAIL_USERNAME")
+EMAIL_ADDRESS = os.getenv("DSCI_AWS_EMAIL_ADDRESS")
 
 TEST_LIST = os.getenv("TEST_LIST")
 if TEST_LIST == "False":
