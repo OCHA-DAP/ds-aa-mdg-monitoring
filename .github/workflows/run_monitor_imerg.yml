@@ -11,6 +11,12 @@ on:
         default: ''  # Leave blank by default
 
 jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep schedule alive
+        run: echo "Workflow keep-alive ping at $(date -u)"
+        
   run-script:
     runs-on: ubuntu-latest
 
