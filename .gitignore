@@ -6,7 +6,6 @@ __pycache__
 .ipynb_checkpoints
 .idea
 .python-version
-*.ipynb
 
 *.egg-info/
 
