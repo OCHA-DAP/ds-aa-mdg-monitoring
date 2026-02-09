@@ -40,6 +40,7 @@ from src.datasources.meteofr import (
     prepare_wind_contours,
     expand_quad_col,
     calculate_wind_buffers_gdf,
+    calculate_shifted_exposures,
 )
 from src.monitoring.plotting import plot_bullseye_exposures, plot_wind_buffers
 from src.utils.exposure import calculate_multi_adm_exposure
@@ -72,7 +73,7 @@ fcast_dict = json.loads(data)
 
 ```python
 # local file
-local_path = "temp/CMRSTRACK_SWI$10_20252026_GEZANI_2026_02_09_12Z.json"
+local_path = "temp/CMRSTRACK_SWI$10_20252026_GEZANI_2026_02_09_18Z.json"
 
 with open(local_path, "r", encoding="utf-8") as f:
     fcast_dict = json.load(f)
@@ -182,6 +183,66 @@ df_exp["speed_kmh"].unique()
 df_exp
 ```
 
+## Calculate perturbed exposures
+
+```python
+records = records.set_crs(4326)
+```
+
+```python
+(
+    df_exp_shift,
+    gdf_shift_buffers,
+    gdf_shift_tracks,
+) = calculate_shifted_exposures(
+    records,
+    da_wp,
+    disable_tqdm=False,
+    time_col="time",
+    lat_col="lat",
+    lon_col="lon",
+    quad_cols_format="wind_contour_{speed}kt_{quad}",
+    speeds=speeds,
+)
+```
+
+```python
+df_exp_shift = df_exp_shift.sort_values(
+    [f"exp_{x}" for x in sorted(speeds, reverse=True)], ascending=False
+)
+worst_row = df_exp_shift.iloc[0].copy()
+worst_row["level"] = "worst"
+best_row = df_exp_shift.iloc[-1].copy()
+best_row["level"] = "best"
+```
+
+```python
+df_exp_shift
+```
+
+```python
+# Calculate best and worst case adm3 exposures
+gdf_shift_buffers["speed_kmh"] = (gdf_shift_buffers["speed"] * 1.852).astype(
+    int
+)
+
+worst_buffers = gdf_shift_buffers[
+    gdf_shift_buffers["shift_deg"] == worst_row["shift_deg"]
+]
+best_buffers = gdf_shift_buffers[
+    gdf_shift_buffers["shift_deg"] == best_row["shift_deg"]
+]
+
+
+df_exp_adm1_worst = calculate_multi_adm_exposure(
+    worst_buffers, da_wp, adm1, adm_index="adm1_src", disable_tqdm=False
+)
+
+df_exp_adm1_best = calculate_multi_adm_exposure(
+    best_buffers, da_wp, adm1, adm_index="adm1_src", disable_tqdm=False
+)
+```
+
 ## Plot
 
 ```python
@@ -215,140 +276,164 @@ gdf_buffers["speed_kmh"] = (gdf_buffers["speed"] * 1.852).astype(int)
 ```
 
 ```python
-fig, (ax1, ax2) = plt.subplots(
-    ncols=2,
-    figsize=(12, 8),
-    dpi=200,
+def plot_both_exp(
+    gdf_tracks_plot, gdf_buffers_plot, df_exp_plot, forecast_label: str = ""
+):
+    fig, (ax1, ax2) = plt.subplots(
+        ncols=2,
+        figsize=(12, 8),
+        dpi=200,
+    )
+
+    fig_size = (9, 8)
+
+    plot_wind_buffers(
+        adm1,
+        gdf_buffers_plot,
+        colors=colors,
+        speed_unit="km/h",
+        speed_col="speed_kmh",
+        ax=ax1,
+        fig_size=fig_size,
+        show_labels=True,
+    )
+
+    xs = gdf_tracks_plot.geometry.x.values
+    ys = gdf_tracks_plot.geometry.y.values
+
+    # line first (under points)
+    ax1.plot(
+        xs,
+        ys,
+        color="black",
+        linewidth=1.5,
+        zorder=9,
+    )
+
+    # points on top
+    gdf_tracks_plot.plot(
+        ax=ax1,
+        color="black",
+        markersize=20,
+        zorder=10,
+    )
+
+    gpd.GeoSeries([uncertainty_cone], crs=adm1.crs).plot(
+        ax=ax1,
+        facecolor="none",
+        edgecolor="grey",
+        linewidth=1.5,
+        linestyle="--",
+        zorder=10,
+    )
+
+    existing_legend = ax1.get_legend()
+    if existing_legend is not None:
+        ax1.add_artist(existing_legend)
+
+    # --- build proxy artists for track & cone ---
+    track_handle = Line2D(
+        [0],
+        [0],
+        color="black",
+        linewidth=1.5,
+        label=forecast_label,
+    )
+
+    cone_handle = Patch(
+        facecolor="none",
+        edgecolor="grey",
+        linewidth=1.5,
+        linestyle="--",
+        label="Uncertainty cone",
+    )
+
+    # --- second legend ---
+    legend_track = ax1.legend(
+        handles=[track_handle, cone_handle],
+        loc="upper right",
+        fontsize=7,
+        frameon=True,
+    )
+
+    ax1.add_artist(legend_track)
+
+    ax1.set_title(
+        "Geographic exposure (wind buffers)",
+        fontsize=9,
+        fontweight="bold",
+    )
+
+    plot_bullseye_exposures(
+        template_df,
+        df_exp_plot,
+        label_col="adm_label",
+        id_col="adm1_src",
+        speed_col="speed_kmh",
+        min_font=8,
+        max_font=20,
+        speeds_order=colors.keys(),
+        colors=colors,
+        speed_unit="km/h",
+        ax=ax2,
+        fig_size=fig_size,
+    )
+
+    ax2.set_title(
+        "Population exposure by region",
+        fontsize=9,
+        fontweight="bold",
+    )
+
+    fig.suptitle(
+        f'Madagascar: exposure to "{fc_details["cyclone_name"]}" wind speed',
+        fontsize=12,
+        y=0.98,
+    )
+
+    fig.text(
+        0.5,
+        0.93,
+        f"Forecast issued: {issued_time_str} (EAT) • {forecast_label}",
+        ha="center",
+        fontsize=10,
+        style="italic",
+    )
+
+    fig.subplots_adjust(wspace=-0.1)
+
+    return fig, (ax1, ax2)
+```
+
+```python
+plot_both_exp(
+    gdf_tracks_plot=records,
+    gdf_buffers_plot=gdf_buffers,
+    df_exp_plot=df_exp,
+    forecast_label="Most likely track",
 )
+```
 
-fig_size = (9, 8)
-
-plot_wind_buffers(
-    adm1,
-    gdf_buffers,
-    colors=colors,
-    speed_unit="km/h",
-    speed_col="speed_kmh",
-    ax=ax1,
-    fig_size=fig_size,
-    show_labels=True,
+```python
+plot_both_exp(
+    gdf_tracks_plot=gdf_shift_tracks[
+        gdf_shift_tracks["shift_deg"] == best_row["shift_deg"]
+    ],
+    gdf_buffers_plot=best_buffers,
+    df_exp_plot=df_exp_adm1_best,
+    forecast_label="Lowest-exposure track",
 )
+```
 
-xs = records.geometry.x.values
-ys = records.geometry.y.values
-
-# line first (under points)
-ax1.plot(
-    xs,
-    ys,
-    color="black",
-    linewidth=1.5,
-    zorder=9,
+```python
+plot_both_exp(
+    gdf_tracks_plot=gdf_shift_tracks[
+        gdf_shift_tracks["shift_deg"] == worst_row["shift_deg"]
+    ],
+    gdf_buffers_plot=worst_buffers,
+    df_exp_plot=df_exp_adm1_worst,
+    forecast_label="Highest-exposure track",
 )
-
-# points on top
-records.plot(
-    ax=ax1,
-    color="black",
-    markersize=20,
-    zorder=10,
-)
-
-gpd.GeoSeries([uncertainty_cone], crs=adm1.crs).plot(
-    ax=ax1,
-    facecolor="none",
-    edgecolor="grey",
-    linewidth=1.5,
-    linestyle="--",
-    zorder=10,
-)
-
-existing_legend = ax1.get_legend()
-if existing_legend is not None:
-    ax1.add_artist(existing_legend)
-
-# --- build proxy artists for track & cone ---
-track_handle = Line2D(
-    [0],
-    [0],
-    color="black",
-    linewidth=1.5,
-    label="Cyclone track",
-)
-
-points_handle = Line2D(
-    [0],
-    [0],
-    marker="o",
-    linestyle="none",
-    color="black",
-    markersize=6,
-    label="Forecast points",
-)
-
-cone_handle = Patch(
-    facecolor="none",
-    edgecolor="grey",
-    linewidth=1.5,
-    linestyle="--",
-    label="Uncertainty cone",
-)
-
-# --- second legend ---
-legend_track = ax1.legend(
-    handles=[track_handle, points_handle, cone_handle],
-    loc="upper right",
-    fontsize=7,
-    frameon=True,
-)
-
-ax1.add_artist(legend_track)
-
-ax1.set_title(
-    "Geographic exposure (wind buffers)",
-    fontsize=9,
-    fontweight="bold",
-)
-
-plot_bullseye_exposures(
-    template_df,
-    df_exp,
-    label_col="adm_label",
-    id_col="adm1_src",
-    speed_col="speed_kmh",
-    min_font=6,
-    max_font=20,
-    speeds_order=colors.keys(),
-    colors=colors,
-    speed_unit="km/h",
-    ax=ax2,
-    fig_size=fig_size,
-)
-
-ax2.set_title(
-    "Population exposure by region",
-    fontsize=9,
-    fontweight="bold",
-)
-
-fig.suptitle(
-    f'Madagascar: exposure to "{fc_details["cyclone_name"]}" wind speed',
-    fontsize=12,
-    y=0.98,
-)
-
-fig.text(
-    0.5,
-    0.93,
-    f"Forecast issued: {issued_time_str} (EAT) • Most likely track",
-    ha="center",
-    fontsize=10,
-    style="italic",
-)
-
-fig.subplots_adjust(wspace=-0.2)
-
-speeds_kmh = sorted([int(x * 1.852) for x in speeds])
 ```
 
 ```python
@@ -434,6 +519,7 @@ df_out
 
 ```python
 out_path = f'temp/{fc_details["cyclone_name"].lower()}_issued_{issued_time_str}_mdg_adm1_exposure.csv'
+out_path
 ```
 
 ```python

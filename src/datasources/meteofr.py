@@ -3,14 +3,18 @@ from typing import Literal, Tuple
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import xarray as xr
 from scipy.interpolate import (
     Akima1DInterpolator,
     CubicSpline,
     PchipInterpolator,
 )
+from shapely.affinity import translate
 from shapely.geometry import Point, Polygon, shape
+from tqdm.auto import tqdm
 
 from src.constants import NAUTICAL_MILE_TO_KM
+from src.utils.exposure import calculate_single_adm_exposure
 
 SECTOR_ORDER = ("NEQ", "NWQ", "SEQ", "SWQ")
 QUADS = ["ne", "se", "sw", "nw"]
@@ -451,3 +455,81 @@ def interpolate_track(
     out.index.name = time_col
     out = out.reset_index()
     return out
+
+
+def shift_gdf_points(
+    gdf: gpd.GeoDataFrame,
+    azimuth_deg: float,
+    distance_col: str = "uncertainty_m",
+    geographic_crs: str = "EPSG:4326",
+    projected_crs: str = "EPSG:3857",
+    longitude_col: str = "Longitude",
+    latitude_col: str = "Latitude",
+):
+    gdf = gdf.to_crs(projected_crs)
+    angle_rad = np.deg2rad(azimuth_deg)
+    dx = gdf[distance_col] * np.sin(angle_rad)
+    dy = gdf[distance_col] * np.cos(angle_rad)
+    new_geometry = [
+        translate(geom, xoff=x, yoff=y)
+        for geom, x, y in zip(gdf.geometry, dx, dy)
+    ]
+    df_out = gdf.drop(columns="geometry")
+    df_out["shift_deg"] = azimuth_deg
+    df_out["shift_distance_m"] = gdf[distance_col]
+    gdf_out = gpd.GeoDataFrame(df_out, geometry=new_geometry, crs=gdf.crs)
+    gdf_out = gdf_out.to_crs(geographic_crs)
+    gdf_out[longitude_col] = gdf_out.geometry.x
+    gdf_out[latitude_col] = gdf_out.geometry.y
+    return gdf_out
+
+
+def calculate_shifted_exposures(
+    gdf,
+    da_wp: xr.DataArray,
+    disable_tqdm=True,
+    deg_step: int = 10,
+    uncertainty_nm_col: str = "position_accuracy",
+    time_col: str = "valid_time",
+    lat_col: str = "latitude",
+    lon_col: str = "longitude",
+    quad_cols_format: str = "quadrant_radius_{speed}_{quad}",
+    speeds=None,
+) -> (pd.DataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame):
+    if speeds is None:
+        speeds = [34, 50, 64]
+    gdfs_shifts = []
+    gdfs_shifts_buffers = []
+    dfs = []
+    gdf["uncertainty_m"] = gdf[uncertainty_nm_col] * NAUTICAL_MILE_TO_KM * 1000
+    for shift_deg in tqdm(range(0, 360, deg_step), disable=disable_tqdm):
+        _gdf_shift = shift_gdf_points(
+            gdf, shift_deg, longitude_col=lon_col, latitude_col=lat_col
+        )
+        _gdf_shift_buffers = calculate_wind_buffers_gdf(
+            _gdf_shift,
+            lon_col=lon_col,
+            lat_col=lat_col,
+            valid_time_col=time_col,
+            quad_cols_format=quad_cols_format,
+            speeds=speeds,
+        )
+        _gdf_shift_buffers = _gdf_shift_buffers.to_crs(4326)
+        _gdf_shift_buffers["shift_deg"] = shift_deg
+
+        gdfs_shifts.append(_gdf_shift)
+        gdfs_shifts_buffers.append(_gdf_shift_buffers)
+        _df_exp = calculate_single_adm_exposure(_gdf_shift_buffers, da_wp)
+        _df_exp["shift_deg"] = shift_deg
+        dfs.append(_df_exp)
+    gdf_shift_tracks = pd.concat(gdfs_shifts)
+    gdf_shift_buffers = pd.concat(gdfs_shifts_buffers)
+    df_exp_shift_raw = pd.concat(dfs, ignore_index=True)
+    df_exp_shift = df_exp_shift_raw.pivot(
+        columns="speed",
+        index="shift_deg",
+        values="pop_exposed",
+    )
+    df_exp_shift.columns = [f"exp_{x}" for x in df_exp_shift.columns]
+    df_exp_shift = df_exp_shift.reset_index()
+    return df_exp_shift, gdf_shift_buffers, gdf_shift_tracks
