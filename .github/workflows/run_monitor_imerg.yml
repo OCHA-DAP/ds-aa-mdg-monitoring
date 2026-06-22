@@ -8,7 +8,12 @@ on:
       date:
         description: 'The center date to run for (in YYYY-MM-DD format)'
         required: false
-        default: ''  # Leave blank by default
+        default: ''
+      test:
+        description: 'Send to test list with [test] subject prefix'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   keep-alive:
@@ -16,7 +21,7 @@ jobs:
     steps:
       - name: Keep schedule alive
         run: echo "Workflow keep-alive ping at $(date -u)"
-        
+
   run-script:
     runs-on: ubuntu-latest
 
@@ -36,20 +41,25 @@ jobs:
         python -m pip install -e .
         python -m pip install -r requirements.txt
 
+    - name: Build run command
+      id: build_cmd
+      run: |
+        CMD="python pipelines/monitor_imerg.py"
+        if [ -n "${{ github.event.inputs.date }}" ]; then
+          CMD="$CMD --date ${{ github.event.inputs.date }}"
+        fi
+        if [ "${{ github.event.inputs.test }}" = "true" ]; then
+          CMD="$CMD --test"
+        fi
+        echo "cmd=$CMD" >> $GITHUB_OUTPUT
+
     - name: Run script
       env:
         DSCI_AZ_BLOB_DEV_SAS_WRITE: ${{ secrets.DSCI_AZ_BLOB_DEV_SAS_WRITE }}
         DSCI_AZ_DB_PROD_HOST: ${{ secrets.DSCI_AZ_DB_PROD_HOST }}
         DSCI_AZ_DB_PROD_UID: ${{ secrets.DSCI_AZ_DB_PROD_UID }}
         DSCI_AZ_DB_PROD_PW: ${{ secrets.DSCI_AZ_DB_PROD_PW }}
-        DSCI_AWS_EMAIL_HOST: ${{ secrets.DSCI_AWS_EMAIL_HOST }}
-        DSCI_AWS_EMAIL_USERNAME: ${{ secrets.DSCI_AWS_EMAIL_USERNAME }}
-        DSCI_AWS_EMAIL_PASSWORD: ${{ secrets.DSCI_AWS_EMAIL_PASSWORD }}
-        DSCI_AWS_EMAIL_ADDRESS: ${{ secrets.DSCI_AWS_EMAIL_ADDRESS }}
-        TEST_LIST: ${{ vars.TEST_LIST }}
-      run: |
-        if [ -z "${{ github.event.inputs.date }}" ]; then
-          python pipelines/monitor_imerg.py  # No --date argument passed if blank
-        else
-          python pipelines/monitor_imerg.py --date ${{ github.event.inputs.date }}
-        fi
+        DSCI_LISTMONK_BASE_URL: ${{ secrets.DSCI_LISTMONK_BASE_URL }}
+        DSCI_LISTMONK_API_USERNAME: ${{ secrets.DSCI_LISTMONK_API_USERNAME }}
+        DSCI_LISTMONK_API_KEY: ${{ secrets.DSCI_LISTMONK_API_KEY }}
+      run: ${{ steps.build_cmd.outputs.cmd }}

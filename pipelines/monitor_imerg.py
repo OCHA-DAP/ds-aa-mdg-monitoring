@@ -22,6 +22,11 @@ def parse_args():
         "(default is two days before today)."
         "Script uses rainfall data for the three days centered on this date.",
     )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Send to test distribution list with [test] subject prefix.",
+    )
     return parser.parse_args()
 
 
@@ -61,4 +66,5 @@ if __name__ == "__main__":
     fig, ax = plot_rainfall(imerg_df)
 
     print("Sending email...")
-    send_info_email(imerg_df, fig)
+    campaign_id = send_info_email(imerg_df, fig, test=args.test)
+    print(f"Email sent (campaign ID: {campaign_id})")

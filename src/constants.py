@@ -3,3 +3,6 @@ ISO3 = "MDG"
 RAIN_THRESH = 300
 
 NAUTICAL_MILE_TO_KM = 1.852
+
+LISTMONK_LIST_ID = 105  # TODO: update with actual MDG production list ID
+LISTMONK_LIST_ID_TEST = 103
