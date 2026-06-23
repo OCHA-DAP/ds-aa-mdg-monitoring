@@ -1,7 +1,7 @@
 azure-storage-blob==12.22.0
 matplotlib==3.10.0
 ocha-relay @ git+https://github.com/OCHA-DAP/ocha-relay.git@v0.2.0
-python-dotenv==1.0.1
+python-dotenv>=1.2.2
 pandas==2.2.3
 psycopg2-binary==2.9.10
 sqlalchemy==2.0.36
