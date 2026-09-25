@@ -1,8 +1,9 @@
 name: Monitor IMERG
 
+# Manual fallback only. The daily 16:00 UTC run is the Databricks job
+# "MDG IMERG Monitoring" defined in databricks.yml; GitHub Actions runners
+# are losing network access to the Postgres DB.
 on:
-  schedule:
-    - cron: '0 16 * * *' # run at 4pm UTC, after raster stats run at 3pm UTC
   workflow_dispatch:
     inputs:
       date:
