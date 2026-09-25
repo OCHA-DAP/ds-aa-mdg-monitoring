@@ -1,0 +1,150 @@
+# Databricks Asset Bundle — ds-aa-mdg-monitoring
+#
+# One scheduled job, mdg_imerg_monitoring: the daily Madagascar cyclone AA
+# rainfall monitor (3-day IMERG totals per ADM1 from prod public.imerg →
+# chart → Listmonk campaign), 16:00 UTC — after the ds-raster-pipelines
+# "Run IMERG" job (14:40 UTC) has written the day's stats. Replaces the
+# GitHub Actions "Monitor IMERG" cron (disabled since 2026-04; GitHub
+# runners are losing network access to the Postgres DB).
+#
+# The single task runs the unchanged pipelines/monitor_imerg.py through
+# databricks/run_task.py, which sets the run-mode env vars the script reads
+# (TEST_EMAIL = send to the Listmonk test list with a [test] prefix;
+# MONITORING_DATE = centre date, empty = today-2) and copies src/ + pipelines/
+# off the wsfs checkout before importing. DB credentials are NOT here — the
+# Job Compute policy injects DSCI_AZ_DB_PROD_* from the `dsci` secret scope
+# (the code reads the prod DB via its own psycopg2 URL). The Listmonk sender
+# creds (not in the policy) are added below via spark_env_vars.
+#
+# The `stage` parameter only exists for parity with the other AA bundles
+# (the wrapper exports it as STAGE); this pipeline reads prod regardless.
+#
+#   databricks bundle validate -t dev  -p DEFAULT
+#   databricks bundle deploy   -t dev  -p DEFAULT --var git_branch=my-branch   # feature test (paused)
+#   databricks bundle run mdg_imerg_monitoring -t dev -p DEFAULT              # test list
+#   databricks bundle destroy  -t dev  -p DEFAULT
+#   databricks bundle deploy   -t prod -p DEFAULT                              # the live job (real list)
+
+bundle:
+  name: ds-aa-mdg-monitoring
+
+variables:
+  git_branch:
+    description: Repo branch the job pulls the pipeline code from
+    default: main
+  stage:
+    description: STAGE env for the wrapper (dev | prod); the pipeline itself always reads the prod DB
+    default: dev
+  test_email:
+    description: '"true" = Listmonk test list (103) with a [test] subject prefix; the prod target sets "false" (real list 109)'
+    default: "true"
+
+.git_source: &git_source
+  git_url: https://github.com/OCHA-DAP/ds-aa-mdg-monitoring.git
+  git_provider: gitHub
+  git_branch: ${var.git_branch}
+
+# Job Compute policy (000C79D951EAF0D6): ephemeral single-worker cluster that
+# injects DSCI_AZ_DB_*/DSCI_AZ_BLOB_* from the dsci secret scope. The Listmonk
+# sender creds are not in the policy, so add them.
+.cluster_spec: &cluster_spec
+  policy_id: "000C79D951EAF0D6"
+  apply_policy_default_values: true
+  num_workers: 1
+  spark_env_vars:
+    DSCI_LISTMONK_BASE_URL: "{{secrets/dsci/DSCI_LISTMONK_BASE_URL}}"
+    DSCI_LISTMONK_API_USERNAME: "{{secrets/dsci/DSCI_LISTMONK_API_USERNAME}}"
+    DSCI_LISTMONK_API_KEY: "{{secrets/dsci/DSCI_LISTMONK_API_KEY}}"
+    LISTMONK_SKIP_CONFIRMATION: "true"
+
+# requirements.txt, plus geopandas (imported by src/monitoring/plotting.py but
+# undeclared — it only arrived transitively on GHA). numpy/pandas are left
+# to the Databricks runtime.
+.libs: &libs
+  - pypi: { package: "ocha-stratus==0.1.7" }
+  - pypi: { package: "ocha-relay @ git+https://github.com/OCHA-DAP/ocha-relay.git@v0.2.0" }
+  - pypi: { package: "azure-storage-blob==12.22.0" }
+  - pypi: { package: "matplotlib==3.10.0" }
+  - pypi: { package: "scipy==1.17.0" }
+  - pypi: { package: "geopandas" }
+  - pypi: { package: "sqlalchemy==2.0.36" }
+  - pypi: { package: "psycopg2-binary==2.9.10" }
+  - pypi: { package: "python-dotenv==1.2.2" }
+
+resources:
+  jobs:
+
+    mdg_imerg_monitoring:
+      name: MDG IMERG Monitoring
+      description: >
+        Daily Madagascar cyclone AA rainfall monitor: 3-day IMERG totals per
+        ADM1 (prod public.imerg, after Run IMERG at 14:40 UTC) → chart →
+        Listmonk informational campaign. Replaces the GitHub Actions
+        "Monitor IMERG" cron.
+      git_source: *git_source
+      tags:
+        databricks: job
+
+      permissions:
+        - group_name: dsci
+          level: CAN_MANAGE
+
+      schedule:
+        # 16:00 UTC daily (the GHA cron). No explicit pause_status: the prod
+        # target runs it, the dev target (development mode) auto-pauses it.
+        quartz_cron_expression: "0 0 16 * * ?"
+        timezone_id: UTC
+
+      max_concurrent_runs: 1
+
+      email_notifications:
+        on_failure:
+          - tristan.downing@un.org
+
+      parameters:
+        - name: stage
+          default: ${var.stage}
+        - name: test_email
+          default: ${var.test_email}
+        - name: monitoring_date
+          # centre date YYYY-MM-DD; empty = today - 2 days
+          default: ""
+
+      job_clusters:
+        - job_cluster_key: main
+          new_cluster: *cluster_spec
+
+      tasks:
+        - task_key: monitor_imerg
+          job_cluster_key: main
+          libraries: *libs
+          spark_python_task:
+            python_file: databricks/run_task.py
+            source: GIT
+            parameters:
+              - "pipelines/monitor_imerg.py"
+              - "--stage"
+              - "{{job.parameters.stage}}"
+              - "--env"
+              - "TEST_EMAIL={{job.parameters.test_email}}"
+              - "--env"
+              - "MONITORING_DATE={{job.parameters.monitoring_date}}"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      profile: DEFAULT
+
+  prod:
+    mode: production
+    workspace:
+      profile: DEFAULT
+      root_path: /Workspace/Users/adm.tdowning@global.un.org/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      # TODO: replace with a service principal once one is provisioned
+      user_name: adm.tdowning@global.un.org
+    variables:
+      stage: prod
+      test_email: "false"

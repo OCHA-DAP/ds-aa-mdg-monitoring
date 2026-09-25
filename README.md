@@ -12,7 +12,21 @@ info: set to to or cc to determine how they are listed in the email. If set to a
 More columns can be added (e.g. trigger) if we want to add other email notification types that go out at different times to different lists.
 
 ## Schedule
-Sent every day at 4pm UTC, one hour after raster stats are calculated. There is no backfilling of missed past dates.
+Sent every day at 4pm UTC, after the IMERG raster stats land (Databricks "Run IMERG", 14:40 UTC). There is no backfilling of missed past dates.
+
+Runs as the Databricks job **MDG IMERG Monitoring**, defined in `databricks.yml`
+(one task running `pipelines/monitor_imerg.py` unchanged through
+`databricks/run_task.py`). The `dev` target sends to the Listmonk test list;
+the `prod` target (`test_email=false`) to the real list.
+
+```shell
+databricks bundle validate -t prod -p DEFAULT
+databricks bundle deploy   -t prod -p DEFAULT        # (re)deploy the live job
+databricks bundle run mdg_imerg_monitoring -t prod -p DEFAULT --params test_email=true
+```
+
+The GitHub Actions workflow remains as a manual fallback (`workflow_dispatch`); its cron is gone.
+The script also honours `MONITORING_DATE` and `TEST_EMAIL` env vars (equivalent to `--date` / `--test`).
 
 ## Running the script
 Run locally with python pipelines/monitor_imerg.py.

@@ -1,4 +1,6 @@
 import argparse
+import os
+import sys
 
 import pandas as pd
 
@@ -27,7 +29,17 @@ def parse_args():
         action="store_true",
         help="Send to test distribution list with [test] subject prefix.",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    # Env fallbacks (KB infrastructure/email-testing.md convention) so the
+    # Databricks job can drive the run mode without CLI flags:
+    # MONITORING_DATE=YYYY-MM-DD overrides the default date; TEST_EMAIL=true
+    # is equivalent to --test. Explicit CLI flags still win.
+    env_date = os.getenv("MONITORING_DATE", "").strip()
+    if env_date and "--date" not in sys.argv:
+        args.date = env_date
+    if os.getenv("TEST_EMAIL", "").strip().lower() in ("1", "true", "yes"):
+        args.test = True
+    return args
 
 
 if __name__ == "__main__":
