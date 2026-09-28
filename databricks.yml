@@ -23,7 +23,9 @@
 #   databricks bundle deploy   -t dev  -p DEFAULT --var git_branch=my-branch   # feature test (paused)
 #   databricks bundle run mdg_imerg_monitoring -t dev -p DEFAULT              # test list
 #   databricks bundle destroy  -t dev  -p DEFAULT
-#   databricks bundle deploy   -t prod -p DEFAULT                              # the live job (real list)
+#   databricks bundle deploy   -t prod -p DEFAULT                              # deploys PAUSED (see schedule)
+#   databricks bundle run mdg_imerg_monitoring -t prod -p DEFAULT \
+#       --params test_email=true,test_list_id=5                                # manual test to Tristan only
 
 bundle:
   name: ds-aa-mdg-monitoring
@@ -36,8 +38,11 @@ variables:
     description: STAGE env for the wrapper (dev | prod); the pipeline itself always reads the prod DB
     default: dev
   test_email:
-    description: '"true" = Listmonk test list (103) with a [test] subject prefix; the prod target sets "false" (real list 109)'
+    description: '"true" = Listmonk test list with a [test] subject prefix; the prod target sets "false" (real list 109)'
     default: "true"
+  test_list_id:
+    description: 'Listmonk list id used when test_email=true (103 = "Pauline", 5 = "Tristan only")'
+    default: "103"
 
 .git_source: &git_source
   git_url: https://github.com/OCHA-DAP/ds-aa-mdg-monitoring.git
@@ -90,10 +95,13 @@ resources:
           level: CAN_MANAGE
 
       schedule:
-        # 16:00 UTC daily (the GHA cron). No explicit pause_status: the prod
-        # target runs it, the dev target (development mode) auto-pauses it.
+        # 16:00 UTC daily (the GHA cron). Deployed PAUSED: the GHA schedule
+        # had been off since 2026-04-11, and the user asked that moving to
+        # Databricks not switch it back on. Unpause in the workspace (or set
+        # UNPAUSED here) when the framework is back in monitoring.
         quartz_cron_expression: "0 0 16 * * ?"
         timezone_id: UTC
+        pause_status: PAUSED
 
       max_concurrent_runs: 1
 
@@ -109,6 +117,8 @@ resources:
         - name: monitoring_date
           # centre date YYYY-MM-DD; empty = today - 2 days
           default: ""
+        - name: test_list_id
+          default: ${var.test_list_id}
 
       job_clusters:
         - job_cluster_key: main
@@ -129,6 +139,8 @@ resources:
               - "TEST_EMAIL={{job.parameters.test_email}}"
               - "--env"
               - "MONITORING_DATE={{job.parameters.monitoring_date}}"
+              - "--env"
+              - "LISTMONK_TEST_LIST_ID={{job.parameters.test_list_id}}"
 
 targets:
   dev:
