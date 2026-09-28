@@ -1,6 +1,7 @@
 """Build and send Madagascar rainfall monitoring emails via Listmonk."""
 
 import base64
+import logging
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
@@ -11,6 +12,9 @@ from src.constants import (
     LISTMONK_LIST_ID_TEST,
     RAIN_THRESH,
 )
+from src.monitoring import smtp_fallback
+
+logger = logging.getLogger(__name__)
 
 _CSS = """
 body{font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#222;margin:0;padding:0;}
@@ -84,9 +88,14 @@ def _build_body(df, fig) -> tuple[str, str]:
     return html, middle_date
 
 
-def send_info_email(df, fig, test: bool = False) -> int:
-    """Send the rainfall monitoring email. Returns the Listmonk campaign ID."""
-    client = ListmonkClient.from_env()
+def send_info_email(df, fig, test: bool = False) -> int | None:
+    """Send the rainfall monitoring email. Returns the Listmonk campaign ID.
+
+    Falls back to plain SMTP (see smtp_fallback.py) if Listmonk's API
+    fails, since the shared instance intermittently hangs or times out
+    on authenticated calls. Returns None in that case, since there is
+    no campaign ID.
+    """
     html_body, middle_date = _build_body(df, fig)
     prefix = "[test] " if test else ""
     subject = (
@@ -100,11 +109,20 @@ def send_info_email(df, fig, test: bool = False) -> int:
         f"mdg-cyclone-rainfall-{middle_date}-{ts}"
     )
     list_id = LISTMONK_LIST_ID_TEST if test else LISTMONK_LIST_ID
-    campaign_id = client.create_campaign(
-        name=campaign_name,
-        subject=subject,
-        body=html_body,
-        list_ids=[list_id],
-    )
-    client.send_campaign(campaign_id, skip_confirmation=True)
-    return campaign_id
+
+    try:
+        client = ListmonkClient.from_env()
+        campaign_id = client.create_campaign(
+            name=campaign_name,
+            subject=subject,
+            body=html_body,
+            list_ids=[list_id],
+        )
+        client.send_campaign(campaign_id, skip_confirmation=True)
+        return campaign_id
+    except Exception as exc:
+        logger.warning(
+            f"Listmonk send failed ({exc}); falling back to SMTP."
+        )
+        smtp_fallback.send_via_smtp(subject, html_body, test=test)
+        return None
