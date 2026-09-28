@@ -28,6 +28,27 @@ databricks bundle run mdg_imerg_monitoring -t prod -p DEFAULT --params test_emai
 The GitHub Actions workflow remains as a manual fallback (`workflow_dispatch`); its cron is gone.
 The script also honours `MONITORING_DATE` and `TEST_EMAIL` env vars (equivalent to `--date` / `--test`).
 
+### Switching the daily send on
+
+The Databricks job is deployed with its schedule **paused** (the GitHub
+cron had been off since 2026-04-11, and the move to Databricks deliberately
+did not switch it back on). Nothing else needs flipping: the job runs from
+`main`, reads prod `public.imerg`, and sends through Listmonk (real list 109
+when `test_email=false`, which the prod target sets). To switch on:
+
+1. Optional dry run to yourself first:
+   ```shell
+   databricks bundle run mdg_imerg_monitoring -t prod -p DEFAULT --params test_email=true,test_list_id=5
+   ```
+   (list 5 = "Tristan only"; the default test list 103 is Pauline's).
+2. Unpause the schedule — either in the workspace UI (job "MDG IMERG
+   Monitoring" → Schedule → Resume), or set `pause_status: UNPAUSED` on the
+   schedule in `databricks.yml` and `databricks bundle deploy -t prod -p DEFAULT`.
+3. It then runs daily at 16:00 UTC (after "Run IMERG" at 14:40 UTC) and
+   emails list 109. Failures notify tristan.downing@un.org.
+
+To switch off again: pause the schedule the same way.
+
 ## Running the script
 Run locally with python pipelines/monitor_imerg.py.
 
