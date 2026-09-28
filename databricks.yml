@@ -81,14 +81,13 @@ resources:
 
     mdg_imerg_monitoring:
       name: MDG IMERG Monitoring
-      description: >
-        Daily Madagascar cyclone AA rainfall monitor: 3-day IMERG totals per
-        ADM1 (prod public.imerg, after Run IMERG at 14:40 UTC) → chart →
-        Listmonk informational campaign. Replaces the GitHub Actions
-        "Monitor IMERG" cron.
+      description: "Monitor the Madagascar cyclone trigger from 3-day [IMERG](https://gpm.nasa.gov/data/imerg) rainfall totals per ADM1"
       git_source: *git_source
       tags:
         databricks: job
+        type: monitoring
+        hazard: tropical-cyclone
+        kb: mdg-monitoring
 
       permissions:
         - group_name: dsci
