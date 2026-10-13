@@ -49,13 +49,13 @@ variables:
   git_provider: gitHub
   git_branch: ${var.git_branch}
 
-# Job Compute policy (000C79D951EAF0D6): ephemeral single-worker cluster that
-# injects DSCI_AZ_DB_*/DSCI_AZ_BLOB_* from the dsci secret scope. The Listmonk
-# sender creds are not in the policy, so add them.
+# Job Compute (single node) policy (0017962FF5D1E3B9): ephemeral one-VM cluster
+# that injects DSCI_AZ_DB_*/DSCI_AZ_BLOB_* from the dsci secret scope. The
+# policy fixes num_workers=0, so it is not set here. The Listmonk sender creds
+# are not in the policy, so add them.
 .cluster_spec: &cluster_spec
-  policy_id: "000C79D951EAF0D6"
+  policy_id: "0017962FF5D1E3B9"
   apply_policy_default_values: true
-  num_workers: 1
   spark_env_vars:
     DSCI_LISTMONK_BASE_URL: "{{secrets/dsci/DSCI_LISTMONK_BASE_URL}}"
     DSCI_LISTMONK_API_USERNAME: "{{secrets/dsci/DSCI_LISTMONK_API_USERNAME}}"
