@@ -95,9 +95,10 @@ def send_info_email(df, fig, test: bool = False) -> int:
     )
     eat = timezone(timedelta(hours=3))
     ts = datetime.now(eat).strftime("%Y%m%dT%H%M")
+    # "[fr]" in the name switches Listmonk template 8's footer to French
     campaign_name = (
         f"{'[test]-' if test else ''}"
-        f"mdg-cyclone-rainfall-{middle_date}-{ts}"
+        f"[fr]-mdg-cyclone-rainfall-{middle_date}-{ts}"
     )
     list_id = LISTMONK_LIST_ID_TEST if test else LISTMONK_LIST_ID
     campaign_id = client.create_campaign(
