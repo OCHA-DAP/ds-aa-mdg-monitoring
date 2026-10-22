@@ -30,11 +30,11 @@ The script also honours `MONITORING_DATE` and `TEST_EMAIL` env vars (equivalent 
 
 ### Switching the daily send on
 
-The Databricks job is deployed with its schedule **paused** (the GitHub
-cron had been off since 2026-04-11, and the move to Databricks deliberately
-did not switch it back on). Nothing else needs flipping: the job runs from
-`main`, reads prod `public.imerg`, and sends through Listmonk (real list 109
-when `test_email=false`, which the prod target sets). To switch on:
+The Databricks job is **live**: its schedule was unpaused on 2026-10-21 for
+the new season (the GitHub cron had been off since 2026-04-11). The job runs
+from `main`, reads prod `public.imerg`, and sends through Listmonk (real list
+109 when `test_email=false`, which the prod target sets). The steps used to
+switch it on, kept for reference:
 
 1. Optional dry run to yourself first:
    ```shell
