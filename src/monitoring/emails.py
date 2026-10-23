@@ -40,7 +40,7 @@ def _date_fr(date) -> str:
 def _build_body(df, fig) -> tuple[str, str]:
     middle_date = str(df["valid_date"].unique()[1])
     df_grouped = df.groupby("pcode")["mean"].sum().reset_index()
-    reached = df_grouped["mean"].max() > RAIN_THRESH
+    reached = df_grouped["mean"].max() >= RAIN_THRESH
     obsv_trigger = "ATTEINT" if reached else "NON ATTEINT"
     trigger_color = "#c0392b" if reached else "#0066cc"
 
